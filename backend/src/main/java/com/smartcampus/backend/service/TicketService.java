@@ -10,6 +10,8 @@ import com.smartcampus.backend.enums.TicketStatus;
 import com.smartcampus.backend.exception.BadRequestException;
 import com.smartcampus.backend.exception.ResourceNotFoundException;
 import com.smartcampus.backend.repository.TicketRepository;
+import com.smartcampus.backend.repository.UserRepository;
+import com.smartcampus.backend.repository.ResourceRepository;
 import com.smartcampus.backend.request.CreateTicketRequest;
 import com.smartcampus.backend.request.UpdateTicketRequest;
 import org.springframework.beans.factory.annotation.Autowired;
