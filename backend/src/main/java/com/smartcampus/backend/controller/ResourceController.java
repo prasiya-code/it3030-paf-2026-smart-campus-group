@@ -45,6 +45,7 @@ public class ResourceController {
             @RequestParam(required = false) String location,
             @RequestParam(required = false) Integer minCapacity,
             @RequestParam(required = false) ResourceStatus status) {
+
         return ResponseEntity.ok(resourceService.searchResources(type, location, minCapacity, status));
     }
 
