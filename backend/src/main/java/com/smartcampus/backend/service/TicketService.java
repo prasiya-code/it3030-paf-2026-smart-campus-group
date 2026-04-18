@@ -3,6 +3,7 @@ package com.smartcampus.backend.service;
 import com.smartcampus.backend.entity.Resource;
 import com.smartcampus.backend.entity.Ticket;
 import com.smartcampus.backend.entity.User;
+import com.smartcampus.backend.entity.Attachment;
 import com.smartcampus.backend.enums.NotificationType;
 import com.smartcampus.backend.enums.TicketCategory;
 import com.smartcampus.backend.enums.TicketPriority;
@@ -17,7 +18,12 @@ import com.smartcampus.backend.request.UpdateTicketRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,7 +43,7 @@ public class TicketService {
     private NotificationService notificationService;
 
     @Transactional
-    public Ticket createTicket(CreateTicketRequest request, Long userId) {
+    public Ticket createTicket(CreateTicketRequest request, List<MultipartFile> files, Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -57,6 +63,29 @@ public class TicketService {
             Resource resource = resourceRepository.findById(request.getResourceId())
                     .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
             ticket.setResource(resource);
+        }
+
+        if (files != null && !files.isEmpty()) {
+            String uploadDir = "uploads/tickets/";
+            try {
+                Files.createDirectories(Paths.get(uploadDir));
+                for (MultipartFile file : files) {
+                    if (file.isEmpty()) continue;
+                    String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+                    Path filePath = Paths.get(uploadDir + fileName);
+                    Files.write(filePath, file.getBytes());
+
+                    Attachment attachment = new Attachment();
+                    attachment.setTicket(ticket);
+                    attachment.setFileName(file.getOriginalFilename());
+                    attachment.setFilePath(filePath.toString());
+                    attachment.setContentType(file.getContentType());
+                    attachment.setFileSize(file.getSize());
+                    ticket.getAttachments().add(attachment);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Could not store files locally", e);
+            }
         }
 
         return ticketRepository.save(ticket);
@@ -131,8 +160,11 @@ public class TicketService {
     @Transactional
     public void deleteTicket(Long id, Long userId) {
         Ticket ticket = getTicketById(id);
+        User user = userRepository.findById(userId).orElseThrow();
+        
+        boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
 
-        if (!ticket.getCreatedBy().getId().equals(userId)) {
+        if (!isAdmin && !ticket.getCreatedBy().getId().equals(userId)) {
             throw new BadRequestException("You can only delete your own tickets");
         }
 

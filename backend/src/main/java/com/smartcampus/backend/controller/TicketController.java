@@ -11,9 +11,11 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import com.smartcampus.backend.repository.UserRepository;
 
 import java.util.List;
 
@@ -24,11 +26,16 @@ public class TicketController {
     @Autowired
     private TicketService ticketService;
 
-    @PostMapping
-    public ResponseEntity<Ticket> createTicket(@Valid @RequestBody CreateTicketRequest request,
-                                               @AuthenticationPrincipal OAuth2User principal) {
-        Long userId = extractUserId(principal);
-        Ticket ticket = ticketService.createTicket(request, userId);
+    @Autowired
+    private UserRepository userRepository;
+
+    @PostMapping(consumes = {"multipart/form-data"})
+    public ResponseEntity<Ticket> createTicket(
+            @ModelAttribute @Valid CreateTicketRequest request,
+            @RequestParam(value = "attachments", required = false) List<MultipartFile> attachments,
+            Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        Ticket ticket = ticketService.createTicket(request, attachments, userId);
         return new ResponseEntity<>(ticket, HttpStatus.CREATED);
     }
 
@@ -49,8 +56,8 @@ public class TicketController {
 
 
     @GetMapping("/my-tickets")
-    public ResponseEntity<List<Ticket>> getMyTickets(@AuthenticationPrincipal OAuth2User principal) {
-        Long userId = extractUserId(principal);
+    public ResponseEntity<List<Ticket>> getMyTickets(Authentication authentication) {
+        Long userId = extractUserId(authentication);
         return ResponseEntity.ok(ticketService.getTicketsByUser(userId));
     }
 
@@ -62,23 +69,32 @@ public class TicketController {
     @PutMapping("/{id}")
     public ResponseEntity<Ticket> updateTicket(@PathVariable Long id,
                                                @RequestBody UpdateTicketRequest request,
-                                               @AuthenticationPrincipal OAuth2User principal) {
-        Long updaterId = extractUserId(principal);
+                                               Authentication authentication) {
+        Long updaterId = extractUserId(authentication);
         return ResponseEntity.ok(ticketService.updateTicket(id, request, updaterId));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTicket(@PathVariable Long id,
-                                          @AuthenticationPrincipal OAuth2User principal) {
-        Long userId = extractUserId(principal);
+                                             Authentication authentication) {
+        Long userId = extractUserId(authentication);
         ticketService.deleteTicket(id, userId);
         return ResponseEntity.noContent().build();
     }
 
-    private Long extractUserId(OAuth2User principal) {
-        if (principal == null) {
-            return 1L; // temporary test user id
+    private Long extractUserId(Authentication authentication) {
+        if (authentication == null) {
+            return 1L; // fallback for unauthenticated (should be blocked by security)
         }
-        return principal.getAttribute("id");
+        
+        if (authentication.getPrincipal() instanceof OAuth2User oauth2User) {
+            return oauth2User.getAttribute("id");
+        }
+        
+        // Manual login uses email as username
+        String email = authentication.getName();
+        return userRepository.findByEmail(email)
+                .map(com.smartcampus.backend.entity.User::getId)
+                .orElse(1L);
     }
 }
