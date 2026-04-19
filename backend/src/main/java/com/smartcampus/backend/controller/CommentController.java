@@ -61,18 +61,34 @@ public class CommentController {
     }
 
     private Long extractUserId(Authentication authentication) {
-        if (authentication == null) {
+        if (authentication == null || authentication.getPrincipal() == null) {
             return 1L; // fallback for unauthenticated (should be blocked by security)
         }
         
-        if (authentication.getPrincipal() instanceof OAuth2User oauth2User) {
-            return oauth2User.getAttribute("id");
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof OAuth2User oauth2User) {
+            Object idAttr = oauth2User.getAttribute("id");
+
+            if (idAttr != null) {
+                return Long.valueOf(idAttr.toString());
+            }
+
+            // Fallback for old sessions that don't have "id" in attributes
+            String oauthEmail = oauth2User.getAttribute("email");
+            if (oauthEmail != null) {
+                return userRepository.findByEmail(oauthEmail)
+                        .map(user -> user.getId() != null ? user.getId() : 1L)
+                        .orElse(1L);
+            }
+            return 1L;
         }
         
         // Manual login uses email as username
         String email = authentication.getName();
+        if (email == null) return 1L;
         return userRepository.findByEmail(email)
-                .map(com.smartcampus.backend.entity.User::getId)
+                .map(user -> user.getId() != null ? user.getId() : 1L)
                 .orElse(1L);
     }
 }
