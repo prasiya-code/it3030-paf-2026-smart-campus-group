@@ -51,8 +51,17 @@ public class BookingService {
             throw new BadRequestException("End time must be after start time");
         }
 
+        // Log the booking request details for debugging
+        System.out.println("=== Booking Overlap Check ===");
+        System.out.println("Resource ID: " + request.getResourceId());
+        System.out.println("Booking Date: " + request.getBookingDate());
+        System.out.println("Start Time: " + request.getStartTime());
+        System.out.println("End Time: " + request.getEndTime());
+
         boolean hasConflict = bookingRepository.hasOverlappingBooking(
                 request.getResourceId(), request.getBookingDate(), request.getStartTime(), request.getEndTime());
+
+        System.out.println("Has Conflict: " + hasConflict);
 
         if (hasConflict) {
             throw new BadRequestException("Resource is not available for the selected time slot");

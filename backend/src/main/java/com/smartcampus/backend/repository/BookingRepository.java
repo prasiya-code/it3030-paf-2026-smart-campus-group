@@ -38,7 +38,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END FROM Booking b " +
             "WHERE b.resource.id = :resourceId AND b.bookingDate = :bookingDate " +
             "AND b.status IN ('PENDING', 'APPROVED') " +
-            "AND ((b.startTime < :endTime AND b.endTime > :startTime)) AND b.id != :excludeBookingId")
+            "AND b.startTime < :endTime AND b.endTime > :startTime " +
+            "AND b.id != :excludeBookingId")
     boolean hasOverlappingBooking(
             @Param("resourceId") Long resourceId,
             @Param("bookingDate") LocalDate bookingDate,
@@ -50,7 +51,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END FROM Booking b " +
             "WHERE b.resource.id = :resourceId AND b.bookingDate = :bookingDate " +
             "AND b.status IN ('PENDING', 'APPROVED') " +
-            "AND ((b.startTime < :endTime AND b.endTime > :startTime))")
+            "AND b.startTime < :endTime AND b.endTime > :startTime")
     boolean hasOverlappingBooking(
             @Param("resourceId") Long resourceId,
             @Param("bookingDate") LocalDate bookingDate,
