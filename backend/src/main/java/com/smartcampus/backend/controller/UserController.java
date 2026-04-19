@@ -60,25 +60,24 @@ public class UserController {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
-            // Get roles from DB
-            if (userId != null) {
-                Optional<User> userOpt = userRepository.findById(userId);
-                if (userOpt.isPresent()) {
-                    User user = userOpt.get();
-                    List<String> roles = user.getRoles().stream()
-                        .map(role -> role.getName())
-                        .collect(Collectors.toList());
-                    response.put("authenticated", true);
-                    response.put("id", userId);
-                    response.put("email", email);
-                    response.put("firstName", firstName);
-                    response.put("lastName", lastName);
-                    response.put("roles", roles);
-                    response.put("role",
-                        roles.isEmpty() ? "USER" : roles.get(0));
-                    response.put("authProvider", "GOOGLE");
-                    return ResponseEntity.ok(response);
-                }
+            // Always try to get user data from DB by email for updated values
+            Optional<User> userByEmailOpt = userRepository.findByEmail(email);
+            if (userByEmailOpt.isPresent()) {
+                User user = userByEmailOpt.get();
+                List<String> roles = user.getRoles().stream()
+                    .map(role -> role.getName())
+                    .collect(Collectors.toList());
+                // Use firstName/lastName from DB if they exist, otherwise use OAuth2 attributes
+                response.put("authenticated", true);
+                response.put("id", user.getId());
+                response.put("email", user.getEmail());
+                response.put("firstName", user.getFirstName() != null && !user.getFirstName().isEmpty() ? user.getFirstName() : firstName);
+                response.put("lastName", user.getLastName() != null && !user.getLastName().isEmpty() ? user.getLastName() : lastName);
+                response.put("roles", roles);
+                response.put("role",
+                    roles.isEmpty() ? "USER" : roles.get(0));
+                response.put("authProvider", "GOOGLE");
+                return ResponseEntity.ok(response);
             }
 
             response.put("authenticated", true);
@@ -125,7 +124,17 @@ public class UserController {
             return ResponseEntity.status(401).body(response);
         }
 
-        String email = authentication.getName();
+        String email = null;
+
+        // Handle OAuth2 user
+        if (authentication.getPrincipal() instanceof OAuth2User) {
+            OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
+            email = oauth2User.getAttribute("email");
+        } else {
+            // Handle email/password user
+            email = authentication.getName();
+        }
+
         Optional<User> userOpt = userRepository.findByEmail(email);
 
         if (userOpt.isEmpty()) {
@@ -167,7 +176,7 @@ public class UserController {
     @GetMapping("/admin/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getAllUsers() {
-        List<User> users = userRepository.findAll();
+        List<User> users = userRepository.findAllByOrderByCreatedAtDesc();
         List<Map<String, Object>> userResponses = users.stream().map(user -> {
             Map<String, Object> userMap = new HashMap<>();
             userMap.put("id", user.getId());
