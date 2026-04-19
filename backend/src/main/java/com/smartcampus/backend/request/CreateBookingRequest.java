@@ -1,5 +1,6 @@
 package com.smartcampus.backend.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,12 +16,15 @@ public class CreateBookingRequest {
 
     @NotNull(message = "Booking date is required")
     @Future(message = "Booking date must be in the future")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate bookingDate;
 
     @NotNull(message = "Start time is required")
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime startTime;
 
     @NotNull(message = "End time is required")
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime endTime;
 
     @NotBlank(message = "Purpose is required")
