@@ -24,27 +24,22 @@ public class ResourceController {
     private ResourceService resourceService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Resource> createResource(@Valid @RequestBody CreateResourceRequest request,
-                                                   @AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<Resource> createResource(@Valid @RequestBody CreateResourceRequest request) {
         Resource resource = resourceService.createResource(request);
         return new ResponseEntity<>(resource, HttpStatus.CREATED);
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Resource>> getAllResources() {
         return ResponseEntity.ok(resourceService.getAllResources());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> getResourceById(@PathVariable Long id) {
         return ResponseEntity.ok(resourceService.getResourceById(id));
     }
 
     @GetMapping("/search")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Resource>> searchResources(
             @RequestParam(required = false) ResourceType type,
             @RequestParam(required = false) String location,
@@ -55,16 +50,13 @@ public class ResourceController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Resource> updateResource(@PathVariable Long id,
                                                    @Valid @RequestBody UpdateResourceRequest request) {
         return ResponseEntity.ok(resourceService.updateResource(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteResource(@PathVariable Long id,
-                                               @AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<Void> deleteResource(@PathVariable Long id) {
         resourceService.deleteResource(id);
         return ResponseEntity.noContent().build();
     }
