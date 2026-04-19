@@ -109,6 +109,7 @@ public class BookingController {
         return ResponseEntity.ok(booking);
     }
 
+    // Admin status update only
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Booking> updateBooking(
@@ -120,9 +121,10 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.updateBookingStatus(id, request, adminId));
     }
 
-    @PatchMapping("/{id}")
+    // User self-edit own pending booking details
+    @PutMapping("/{id}/edit")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Booking> updateUserBooking(
+    public ResponseEntity<Booking> editUserBooking(
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateBookingRequest request,
             Authentication authentication
