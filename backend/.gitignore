@@ -32,3 +32,16 @@ build/
 ### VS Code ###
 .vscode/
 
+# Environment files
+.env
+.env.local
+.env.*
+backend/.env
+
+# Application properties (sensitive config)
+src/main/resources/application.properties
+backend/src/main/resources/application.properties
+
+# Mac files
+.DS_Store
+
