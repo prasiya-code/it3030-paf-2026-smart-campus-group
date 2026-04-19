@@ -38,32 +38,63 @@ public class UserController {
             Authentication authentication) {
         Map<String, Object> response = new HashMap<>();
 
-        if (authentication == null || !authentication.isAuthenticated()) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication.getPrincipal().equals("anonymousUser")) {
             return ResponseEntity.status(401).body(response);
         }
 
-        String email = authentication.getName();
+        String email = null;
 
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            // Try OAuth2 user
-            if (authentication.getPrincipal() instanceof OAuth2User) {
-                OAuth2User oauth2User =
-                    (OAuth2User) authentication.getPrincipal();
-                response.put("authenticated", true);
-                response.put("id", oauth2User.getAttribute("id"));
-                response.put("email", oauth2User.getAttribute("email"));
-                response.put("firstName",
-                    oauth2User.getAttribute("firstName"));
-                response.put("lastName",
-                    oauth2User.getAttribute("lastName"));
-                List<String> authorities = authentication.getAuthorities()
-                    .stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toList());
-                response.put("authorities", authorities);
-                return ResponseEntity.ok(response);
+        // Handle OAuth2 user
+        if (authentication.getPrincipal() instanceof OAuth2User) {
+            OAuth2User oauth2User =
+                (OAuth2User) authentication.getPrincipal();
+
+            Long userId = oauth2User.getAttribute("id");
+            email = oauth2User.getAttribute("email");
+            String firstName = oauth2User.getAttribute("firstName");
+            String lastName = oauth2User.getAttribute("lastName");
+
+            List<String> authorities = authentication.getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
+            // Get roles from DB
+            if (userId != null) {
+                Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    List<String> roles = user.getRoles().stream()
+                        .map(role -> role.getName())
+                        .collect(Collectors.toList());
+                    response.put("authenticated", true);
+                    response.put("id", userId);
+                    response.put("email", email);
+                    response.put("firstName", firstName);
+                    response.put("lastName", lastName);
+                    response.put("roles", roles);
+                    response.put("role",
+                        roles.isEmpty() ? "USER" : roles.get(0));
+                    response.put("authProvider", "GOOGLE");
+                    return ResponseEntity.ok(response);
+                }
             }
+
+            response.put("authenticated", true);
+            response.put("email", email);
+            response.put("firstName", firstName);
+            response.put("lastName", lastName);
+            response.put("role", "USER");
+            response.put("authProvider", "GOOGLE");
+            return ResponseEntity.ok(response);
+        }
+
+        // Handle email/password user
+        email = authentication.getName();
+        Optional<User> userOpt = userRepository.findByEmail(email);
+
+        if (userOpt.isEmpty()) {
             return ResponseEntity.status(401).body(response);
         }
 
@@ -79,6 +110,7 @@ public class UserController {
         response.put("lastName", user.getLastName());
         response.put("roles", roles);
         response.put("role", roles.isEmpty() ? "USER" : roles.get(0));
+        response.put("authProvider", "LOCAL");
 
         return ResponseEntity.ok(response);
     }
