@@ -90,11 +90,15 @@ public class TicketController {
             return 1L; // temporary test user id
         }
         
-        if (authentication.getPrincipal() instanceof OAuth2User oauth2User) {
-            Long oauthId = oauth2User.getAttribute("id");
-            if (oauthId != null) {
-                return oauthId;
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof OAuth2User oauth2User) {
+            Object idAttr = oauth2User.getAttribute("id");
+
+            if (idAttr != null) {
+                return Long.valueOf(idAttr.toString());
             }
+
             // Fallback for old sessions that don't have "id" in attributes
             String oauthEmail = oauth2User.getAttribute("email");
             if (oauthEmail != null) {
