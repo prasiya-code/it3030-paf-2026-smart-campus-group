@@ -124,24 +124,31 @@ public class BookingService {
         Booking updated = bookingRepository.save(booking);
 
         // Send notification to user
-        if (request.getStatus() == BookingStatus.APPROVED) {
-            notificationService.createNotification(
-                    booking.getUser().getId(),
-                    "Booking Approved",
-                    "Your booking for " + booking.getResource().getName() + " has been approved.",
-                    com.smartcampus.backend.enums.NotificationType.BOOKING_APPROVED,
-                    booking.getId(),
-                    null
-            );
-        } else if (request.getStatus() == BookingStatus.REJECTED) {
-            notificationService.createNotification(
-                    booking.getUser().getId(),
-                    "Booking Rejected",
-                    "Your booking for " + booking.getResource().getName() + " has been rejected. Reason: " + request.getAdminReason(),
-                    com.smartcampus.backend.enums.NotificationType.BOOKING_REJECTED,
-                    booking.getId(),
-                    null
-            );
+        try {
+            if (request.getStatus() == BookingStatus.APPROVED) {
+                notificationService.createNotification(
+                        booking.getUser().getId(),
+                        "Booking Approved",
+                        "Your booking for " + booking.getResource().getName() + " has been approved.",
+                        com.smartcampus.backend.enums.NotificationType.BOOKING_APPROVED,
+                        booking.getId(),
+                        null
+                );
+                System.out.println("Notification created for booking approval: " + booking.getId());
+            } else if (request.getStatus() == BookingStatus.REJECTED) {
+                notificationService.createNotification(
+                        booking.getUser().getId(),
+                        "Booking Rejected",
+                        "Your booking for " + booking.getResource().getName() + " has been rejected. Reason: " + request.getAdminReason(),
+                        com.smartcampus.backend.enums.NotificationType.BOOKING_REJECTED,
+                        booking.getId(),
+                        null
+                );
+                System.out.println("Notification created for booking rejection: " + booking.getId());
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to create notification for booking " + booking.getId() + ": " + e.getMessage());
+            e.printStackTrace();
         }
 
         return updated;

@@ -123,14 +123,20 @@ public class TicketService {
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             ticket.setAssignedTo(assignedTo);
 
-            notificationService.createNotification(
-                    assignedTo.getId(),
-                    "Ticket Assigned",
-                    "You have been assigned to ticket: " + ticket.getTicketCode(),
-                    NotificationType.TICKET_ASSIGNED,
-                    null,
-                    ticket.getId()
-            );
+            try {
+                notificationService.createNotification(
+                        assignedTo.getId(),
+                        "Ticket Assigned",
+                        "You have been assigned to ticket: " + ticket.getTicketCode(),
+                        NotificationType.TICKET_ASSIGNED,
+                        null,
+                        ticket.getId()
+                );
+                System.out.println("Notification created for ticket assignment: " + ticket.getId());
+            } catch (Exception e) {
+                System.err.println("Failed to create notification for ticket assignment: " + ticket.getId() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
         }
 
         if (request.getResolutionNotes() != null) {
@@ -144,14 +150,20 @@ public class TicketService {
         Ticket updated = ticketRepository.save(ticket);
 
         if (oldStatus != ticket.getStatus()) {
-            notificationService.createNotification(
-                    ticket.getCreatedBy().getId(),
-                    "Ticket Status Updated",
-                    "Your ticket '" + ticket.getTicketCode() + "' status changed from " + oldStatus + " to " + ticket.getStatus(),
-                    NotificationType.TICKET_STATUS_CHANGED,
-                    null,
-                    ticket.getId()
-            );
+            try {
+                notificationService.createNotification(
+                        ticket.getCreatedBy().getId(),
+                        "Ticket Status Updated",
+                        "Your ticket '" + ticket.getTicketCode() + "' status changed from " + oldStatus + " to " + ticket.getStatus(),
+                        NotificationType.TICKET_STATUS_CHANGED,
+                        null,
+                        ticket.getId()
+                );
+                System.out.println("Notification created for ticket status change: " + ticket.getId());
+            } catch (Exception e) {
+                System.err.println("Failed to create notification for ticket status change: " + ticket.getId() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
         }
 
         return updated;

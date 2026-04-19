@@ -66,23 +66,50 @@ public class NotificationController {
     }
 
     private Long extractUserId(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("User not authenticated");
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new RuntimeException("User not authenticated properly");
         }
 
-        String email = authentication.getName();
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        Object principal = authentication.getPrincipal();
 
-        if (userOpt.isEmpty()) {
-            // Try OAuth2 user
-            if (authentication.getPrincipal() instanceof OAuth2User) {
-                OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
-                Long id = oauth2User.getAttribute("id");
-                if (id != null) return id;
+        if (principal instanceof OAuth2User oauth2User) {
+            Object idAttr = oauth2User.getAttribute("id");
+
+            if (idAttr != null) {
+                return Long.valueOf(idAttr.toString());
             }
-            throw new RuntimeException("User not found");
+
+            String email = oauth2User.getAttribute("email");
+            if (email == null || email.isBlank()) {
+                throw new RuntimeException("OAuth2 user email not found");
+            }
+
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            return user.getId();
         }
 
-        return userOpt.get().getId();
+        if (principal instanceof org.springframework.security.core.userdetails.UserDetails userDetails) {
+            String email = userDetails.getUsername();
+
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            return user.getId();
+        }
+
+        if (principal instanceof String principalString) {
+            if ("anonymousUser".equals(principalString)) {
+                throw new RuntimeException("Anonymous user is not allowed");
+            }
+
+            User user = userRepository.findByEmail(principalString)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            return user.getId();
+        }
+
+        throw new RuntimeException("Unsupported authentication type");
     }
 }

@@ -48,26 +48,38 @@ public class CommentService {
 
         // Notify ticket creator if comment is from someone else
         if (!ticket.getCreatedBy().getId().equals(userId)) {
-            notificationService.createNotification(
-                    ticket.getCreatedBy().getId(),
-                    "New Comment on Your Ticket",
-                    user.getFirstName() + " commented on your ticket: " + ticket.getTicketCode(),
-                    NotificationType.TICKET_COMMENT_ADDED,
-                    null,
-                    ticket.getId()
-            );
+            try {
+                notificationService.createNotification(
+                        ticket.getCreatedBy().getId(),
+                        "New Comment on Your Ticket",
+                        user.getFirstName() + " commented on your ticket: " + ticket.getTicketCode(),
+                        NotificationType.TICKET_COMMENT_ADDED,
+                        null,
+                        ticket.getId()
+                );
+                System.out.println("Notification created for comment to ticket creator: " + ticket.getId());
+            } catch (Exception e) {
+                System.err.println("Failed to create notification for comment to ticket creator: " + ticket.getId() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
         }
 
         // If assigned technician exists and is not the commenter, notify them too
         if (ticket.getAssignedTo() != null && !ticket.getAssignedTo().getId().equals(userId)) {
-            notificationService.createNotification(
-                    ticket.getAssignedTo().getId(),
-                    "New Comment on Assigned Ticket",
-                    user.getFirstName() + " commented on ticket: " + ticket.getTicketCode(),
-                    NotificationType.TICKET_COMMENT_ADDED,
-                    null,
-                    ticket.getId()
-            );
+            try {
+                notificationService.createNotification(
+                        ticket.getAssignedTo().getId(),
+                        "New Comment on Assigned Ticket",
+                        user.getFirstName() + " commented on ticket: " + ticket.getTicketCode(),
+                        NotificationType.TICKET_COMMENT_ADDED,
+                        null,
+                        ticket.getId()
+                );
+                System.out.println("Notification created for comment to assigned user: " + ticket.getId());
+            } catch (Exception e) {
+                System.err.println("Failed to create notification for comment to assigned user: " + ticket.getId() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
         }
 
         return saved;
