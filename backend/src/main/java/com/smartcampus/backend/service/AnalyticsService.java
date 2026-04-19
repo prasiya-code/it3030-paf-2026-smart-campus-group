@@ -4,6 +4,7 @@ import com.smartcampus.backend.entity.Booking;
 import com.smartcampus.backend.entity.Comment;
 import com.smartcampus.backend.entity.Resource;
 import com.smartcampus.backend.entity.Ticket;
+import com.smartcampus.backend.entity.User;
 import com.smartcampus.backend.repository.BookingRepository;
 import com.smartcampus.backend.repository.CommentRepository;
 import com.smartcampus.backend.repository.ResourceRepository;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -63,6 +65,12 @@ public class AnalyticsService {
 
         // Booking status distribution
         analytics.put("bookingStatusDistribution", getBookingStatusDistribution());
+
+        // User analytics
+        analytics.put("userAnalytics", getUserAnalytics());
+
+        // Ticket analytics
+        analytics.put("ticketAnalytics", getTicketAnalytics());
 
         return analytics;
     }
@@ -186,5 +194,94 @@ public class AnalyticsService {
         }
 
         return new HashMap<>(statusCounts);
+    }
+
+    private Map<String, Object> getUserAnalytics() {
+        Map<String, Object> userAnalytics = new HashMap<>();
+        List<User> users = userRepository.findAll();
+
+        // User role distribution
+        Map<String, Integer> roleDistribution = new HashMap<>();
+        for (User user : users) {
+            if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+                for (com.smartcampus.backend.entity.Role role : user.getRoles()) {
+                    String roleName = role.getName() != null ? role.getName().toString() : "USER";
+                    roleDistribution.put(roleName, roleDistribution.getOrDefault(roleName, 0) + 1);
+                }
+            } else {
+                roleDistribution.put("USER", roleDistribution.getOrDefault("USER", 0) + 1);
+            }
+        }
+        userAnalytics.put("roleDistribution", roleDistribution);
+
+        // User growth over last 7 days
+        List<Map<String, Object>> userGrowth = new ArrayList<>();
+        for (int i = 6; i >= 0; i--) {
+            LocalDate date = LocalDate.now().minusDays(i);
+            long count = users.stream()
+                    .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().toLocalDate().equals(date))
+                    .count();
+            Map<String, Object> dayData = new HashMap<>();
+            dayData.put("date", date.toString());
+            dayData.put("count", count);
+            userGrowth.add(dayData);
+        }
+        userAnalytics.put("userGrowth", userGrowth);
+
+        // Active users (created in last 30 days)
+        long activeUsers = users.stream()
+                .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().isAfter(LocalDateTime.now().minusDays(30)))
+                .count();
+        userAnalytics.put("activeUsers", activeUsers);
+
+        return userAnalytics;
+    }
+
+    private Map<String, Object> getTicketAnalytics() {
+        Map<String, Object> ticketAnalytics = new HashMap<>();
+        List<Ticket> tickets = ticketRepository.findAll();
+
+        // Ticket trends over last 7 days
+        List<Map<String, Object>> ticketTrends = new ArrayList<>();
+        for (int i = 6; i >= 0; i--) {
+            LocalDate date = LocalDate.now().minusDays(i);
+            long count = tickets.stream()
+                    .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().toLocalDate().equals(date))
+                    .count();
+            Map<String, Object> dayData = new HashMap<>();
+            dayData.put("date", date.toString());
+            dayData.put("count", count);
+            ticketTrends.add(dayData);
+        }
+        ticketAnalytics.put("ticketTrends", ticketTrends);
+
+        // Average resolution time for resolved tickets
+        List<Ticket> resolvedTickets = tickets.stream()
+                .filter(t -> "RESOLVED".equals(t.getStatus()) && t.getCreatedAt() != null && t.getUpdatedAt() != null)
+                .collect(Collectors.toList());
+
+        if (!resolvedTickets.isEmpty()) {
+            double avgResolutionHours = resolvedTickets.stream()
+                    .mapToLong(t -> ChronoUnit.HOURS.between(t.getCreatedAt(), t.getUpdatedAt()))
+                    .average()
+                    .orElse(0);
+            ticketAnalytics.put("avgResolutionTime", avgResolutionHours);
+        } else {
+            ticketAnalytics.put("avgResolutionTime", 0);
+        }
+
+        // Open tickets count
+        long openTickets = tickets.stream()
+                .filter(t -> "OPEN".equals(t.getStatus()))
+                .count();
+        ticketAnalytics.put("openTickets", openTickets);
+
+        // High priority tickets
+        long highPriorityTickets = tickets.stream()
+                .filter(t -> "HIGH".equals(t.getPriority()))
+                .count();
+        ticketAnalytics.put("highPriorityTickets", highPriorityTickets);
+
+        return ticketAnalytics;
     }
 }
