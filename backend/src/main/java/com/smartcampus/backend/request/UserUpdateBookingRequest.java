@@ -12,10 +12,10 @@ public class UserUpdateBookingRequest {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate bookingDate;
 
-    @JsonFormat(pattern = "HH:mm:ss")
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime startTime;
 
-    @JsonFormat(pattern = "HH:mm:ss")
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime endTime;
 
     private String purpose;
